@@ -1,93 +1,58 @@
----
+# ComfyUI Underage Content Filter & Moderation Nodes
 
-# ComfyUI Underage Filter
-
-A custom ComfyUI extension for filtering images and videos that may depict **underage content**, using state-of-the-art image classification models. This tool is designed to support responsible deployment of generative AI by enforcing ethical and legal content moderation.
-
-
-* ✅ Classifies whether subjects in images/videos appear to be underage
-* 📼 Supports both **image** and **video** inputs
-* 🧠 Uses ViT-based models for age classification
-* 🚫 Blocks unsafe content and optionally halts the workflow
-* 🔁 Seamless integration with ComfyUI's workflow system
-* 🧩 Built as a custom ComfyUI node, plug-and-play compatible
-
-## Installation
-
-Clone the repository or copy the node files into your ComfyUI custom node directory:
-
-```bash
-git clone https://github.com/your-username/ComfyUI-Underage-Filter.git
-cd ComfyUI-Underage-Filter
-```
-
-Then, move the files to your ComfyUI custom nodes directory (if necessary):
-
-```bash
-cp -r ComfyUI-Underage-Filter /path/to/ComfyUI/custom_nodes/
-```
-
-Restart ComfyUI.
-
-> Requires ComfyUI >= `2024.03` and Python >= `3.10`
-
-## Dependencies
-
-Install required Python packages:
-
-```bash
-pip install -r requirements.txt
-```
-
-Or if you're using a Docker build, make sure these dependencies are in your `Dockerfile`.
-
-## How It Works
-
-The node uses a ViT-based classifier (e.g., `nateraw/vit-age-classifier`) from Hugging Face to estimate the subject’s age from an image. If the subject appears underage (typically <18), the workflow can halt or flag the content.
-
-### Node Types
-
-#### `UnderageCheck (Image)`
-
-* **Input:** `IMAGE`
-* **Output:** `BOOLEAN` (`is_underage`), `STRING` (`predicted_age`)
-* Optional: Can halt workflow execution or return error
-
-#### `UnderageCheck (Video)`
-
-* **Input:** `VIDEO_PATH`
-* **Output:** `BOOLEAN` (`is_underage`), `STRING` (`predicted_age`)
-* Samples frames from the video and applies the same classification model.
-
-## Configuration
-
-You can configure:
-
-* Age threshold (default is 18)
-* Confidence threshold
-* Whether to block generation or just log
-
-Options can be set directly in the node interface or by editing default values in the script.
-
-## Models
-
-By default, this node uses:
-
-```
-Model: nateraw/vit-age-classifier
-Source: https://huggingface.co/nateraw/vit-age-classifier
-```
-
-You may replace it with any `AutoModelForImageClassification`-compatible model trained for age detection.
-
-## License
-
-MIT License © 2025
+This extension adds moderation-focused nodes for ComfyUI to help filter, block, or gate content based on predicted age, classification confidence, and dynamic logic gates. It uses [nateraw/vit-age-classifier](https://huggingface.co/nateraw/vit-age-classifier) to determine age from images.
 
 ---
 
-## Disclaimer
+## 🚀 Features
 
-This tool **does not guarantee 100% accuracy**. It is intended as a **preventative safety measure**. Always perform additional reviews when necessary. The developers are not liable for misuse or misclassification.
+### ✅ AgeCheckerNode
+Performs age classification using a ViT-based model and optionally blocks underage content.
+
+**Inputs:**
+- `image`: Image tensor (1 image)
+- `gate_enabled`: Boolean toggle to block underage output
+- `use_local_model`: Toggle to load local model from `LOCAL_AGE_MODEL_PATH` environment variable
+
+**Outputs:**
+- `is_underage`: Boolean
+- `predicted_age`: Integer (age bucket or class)
+- `confidence`: Float (probability)
+- `status`: String (`Underage` or `OK`)
+- `gate_output`: Boolean for workflow continuation
+
+> If `gate_enabled` is `True` and the subject is underage, it will raise a `PermissionError`.
 
 ---
+
+### 🔎 UnderageFilterNode
+A lightweight classifier that checks if the image falls into one of the underage classes (`0-2`, `3-9`, `10-19`) with a confidence threshold.
+
+**Inputs:**
+- `image`: Image tensor
+- `score`: Minimum confidence threshold (default: `0.85`)
+
+**Outputs:**
+- `is_underage`: Boolean
+
+---
+
+### ⛔ MultiTypeGateNode
+A flexible gate node that can conditionally halt workflows based on any value type.
+
+**Inputs:**
+- `value`: Supports `BOOLEAN`, `INT`, `FLOAT`, `STRING`
+- `block_on`: Mode (`falsy`, `truthy`, `equal`)
+- `match_value`: Value to match if using `equal` mode
+- `message`: Custom error message to raise
+
+**Outputs:**
+- (None) — raises `PermissionError` if condition is met
+
+---
+
+## 📦 Installation
+
+1. Clone or download this repository into your `ComfyUI/custom_nodes/` directory:
+   ```bash
+   git clone https://github.com/your-repo/comfyui-underage-filter.git

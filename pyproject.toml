@@ -1,0 +1,18 @@
+[project]
+name = "comfyui-underage-filter"
+description = "An implementation to detect underage subjects in images for ComfyUI."
+version = "1.0.1"
+license = { file = "LICENSE" }
+dependencies = [
+    "transformers==4.37.2",
+    "pillow==10.2.0"
+]
+
+[project.urls]
+Repository = "https://github.com/T-Ph525/ComfyUI-Underage-Filter"
+
+[tool.comfy]
+PublisherId = "mrcuddle"
+DisplayName = "Underage Filter"
+Icon = ""
+EntryPoint = "node.py"

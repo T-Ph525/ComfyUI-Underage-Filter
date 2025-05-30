@@ -92,5 +92,3 @@ MIT License © 2025
 This tool **does not guarantee 100% accuracy**. It is intended as a **preventative safety measure**. Always perform additional reviews when necessary. The developers are not liable for misuse or misclassification.
 
 ---
-
-Let me know if you'd like to include sample images, diagrams, or Hugging Face download automation.

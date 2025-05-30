@@ -4,7 +4,6 @@
 
 A custom ComfyUI extension for filtering images and videos that may depict **underage content**, using state-of-the-art image classification models. This tool is designed to support responsible deployment of generative AI by enforcing ethical and legal content moderation.
 
-## Features
 
 * ✅ Classifies whether subjects in images/videos appear to be underage
 * 📼 Supports both **image** and **video** inputs

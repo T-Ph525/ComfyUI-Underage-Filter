@@ -1,7 +1,8 @@
-import os                         # For environment variable and path check
-import torch                      # For tensor operations and model inference
-from PIL import Image             # For converting tensors to images
-from transformers import ViTFeatureExtractor, ViTForImageClassification
+import os
+import torch
+from PIL import Image
+from transformers import ViTFeatureExtractor, ViTForImageClassification, pipeline
+import torchvision.transforms as T
 
 
 class AgeCheckerNode:
@@ -22,9 +23,6 @@ class AgeCheckerNode:
     CATEGORY = "Moderation/Age"
 
     def __init__(self):
-        from transformers import ViTFeatureExtractor, ViTForImageClassification
-        import os
-
         model_path = os.getenv("LOCAL_AGE_MODEL_PATH", "")
         if model_path and os.path.exists(model_path):
             self.model = ViTForImageClassification.from_pretrained(model_path).eval().to("cuda")
@@ -34,12 +32,6 @@ class AgeCheckerNode:
             self.processor = ViTFeatureExtractor.from_pretrained("nateraw/vit-age-classifier")
 
     def check_age(self, image, gate_enabled, use_local_model):
-        import torch
-        from PIL import Image
-        from transformers import ViTFeatureExtractor, ViTForImageClassification
-        import os
-
-        # Reload local model if toggled at runtime
         if use_local_model:
             model_path = os.getenv("LOCAL_AGE_MODEL_PATH", "")
             if model_path and os.path.exists(model_path):
@@ -58,8 +50,48 @@ class AgeCheckerNode:
         gate_output = not is_underage if gate_enabled else True
 
         status = "Underage" if is_underage else "OK"
+
+        if gate_enabled and is_underage:
+            raise PermissionError(403, f"Blocked: Detected age {predicted_age} with confidence {confidence:.2f}.")
+
         return (is_underage, predicted_age, confidence, status, gate_output)
-        
+
+
+class UnderageFilterNode:
+    def __init__(self):
+        self.classifier = pipeline("image-classification", model="nateraw/vit-age-classifier")
+        self.to_pil = T.ToPILImage()
+        self.underage_labels = {"0-2", "3-9", "10-19"}
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "score": ("FLOAT", {
+                    "default": 0.85,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.01,
+                    "round": 0.001,
+                    "display": "age_confidence_threshold"
+                }),
+            },
+        }
+
+    RETURN_TYPES = ("BOOLEAN",)
+    FUNCTION = "check_underage"
+    CATEGORY = "Moderation/Detection"
+
+    def check_underage(self, image, score):
+        img_tensor = image[0]
+        pil_img = self.to_pil(img_tensor.permute(2, 0, 1))
+        results = self.classifier(pil_img)
+        top = max(results, key=lambda r: r["score"])
+        is_underage = top["label"] in self.underage_labels and top["score"] >= score
+        return (is_underage,)
+
+
 class MultiTypeGateNode:
     @classmethod
     def INPUT_TYPES(cls):
@@ -86,7 +118,6 @@ class MultiTypeGateNode:
     def evaluate(self, value, block_on, match_value, message):
         should_block = False
 
-        # Normalize string values
         if isinstance(value, str):
             value = value.strip()
 
@@ -105,13 +136,16 @@ class MultiTypeGateNode:
             raise PermissionError(403, message)
 
         return ()
-        
+
+
 NODE_CLASS_MAPPINGS = {
+    "AgeCheckerNode": AgeCheckerNode,
     "UnderageFilterNode": UnderageFilterNode,
-    "MultitypeGateNode": MultiTypeGateNode,
+    "MultiTypeGateNode": MultiTypeGateNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "AgeCheckerNode": "Age Checker",
     "UnderageFilterNode": "Underage Filter",
-    "MultitypeGateNode": "Flexible Gate",
+    "MultiTypeGateNode": "Flexible Gate",
 }
